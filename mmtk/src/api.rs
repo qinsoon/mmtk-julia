@@ -67,6 +67,7 @@ pub extern "C" fn gc_init(
                 "Setting mmtk heap size to a variable size with min-max of {}-{} (in bytes)",
                 min_heap_size, max_heap_size
             );
+            builder.options.heap_resizing.set(mmtk::util::options::HeapResizingHeuristics::SimpleLiveSqrt);
             success = builder.options.gc_trigger.set(
                 mmtk::util::options::GCTriggerSelector::DynamicHeapSize(
                     min_heap_size,
