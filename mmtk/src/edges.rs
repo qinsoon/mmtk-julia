@@ -74,3 +74,60 @@ impl Edge for OffsetEdge {
         unsafe { (*self.slot_addr).store(middle, atomic::Ordering::Relaxed) }
     }
 }
+
+#[derive(Hash, Clone, PartialEq, Eq, Debug)]
+pub struct JuliaMemorySlice {
+    pub owner: ObjectReference,
+    pub start: Address,
+    pub count: usize,
+}
+
+impl mmtk::vm::edge_shape::MemorySlice for JuliaMemorySlice {
+    type Edge = JuliaVMEdge;
+    type EdgeIterator = JuliaMemorySliceEdgeIterator;
+
+    fn iter_edges(&self) -> Self::EdgeIterator {
+        unimplemented!()
+    }
+
+    fn object(&self) -> Option<ObjectReference> {
+        Some(self.owner)
+    }
+
+    fn start(&self) -> Address {
+        self.start
+    }
+
+    fn bytes(&self) -> usize {
+        self.count << mmtk::util::constants::LOG_BYTES_IN_ADDRESS
+    }
+
+    fn copy(src: &Self, tgt: &Self) {
+        // Raw memory copy
+        unsafe {
+            let words = tgt.bytes() >> mmtk::util::constants::LOG_BYTES_IN_ADDRESS;
+            let src = src.start().to_ptr::<usize>();
+            let tgt = tgt.start().to_mut_ptr::<usize>();
+            std::ptr::copy(src, tgt, words)
+        }
+    }
+}
+
+pub struct JuliaMemorySliceEdgeIterator {
+    cursor: Address,
+    limit: Address,
+}
+
+impl Iterator for JuliaMemorySliceEdgeIterator {
+    type Item = JuliaVMEdge;
+
+    fn next(&mut self) -> Option<JuliaVMEdge> {
+        if self.cursor >= self.limit {
+            None
+        } else {
+            let edge = self.cursor;
+            self.cursor = self.cursor.shift::<ObjectReference>(1);
+            Some(JuliaVMEdge::Simple(SimpleEdge::from_address(edge)))
+        }
+    }
+}

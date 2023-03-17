@@ -1,3 +1,6 @@
+#ifndef MMTK_JULIA_H
+#define MMTK_JULIA_H
+
 #include "mmtk.h"
 #include "gc.h"
 
@@ -32,3 +35,5 @@ void mmtk_jl_run_finalizers(jl_ptls_t tls);
 void mmtk_jl_run_pending_finalizers(void* tls);
 
 JL_DLLEXPORT void scan_julia_obj(jl_value_t* obj, closure_pointer closure, ProcessEdgeFn process_edge, ProcessOffsetEdgeFn process_offset_edge);
+
+#endif // MMTK_JULIA_H

@@ -21,7 +21,7 @@ if [ "$build_type" == "release" ]; then
 fi
 
 cd $MMTK_JULIA_DIR
-cargo build --features immix $build_args
+cargo build --features stickyimmix $build_args
 
 cd $JULIA_PATH
 # Clean first
