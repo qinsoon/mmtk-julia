@@ -283,11 +283,11 @@ pub extern "C" fn harness_end(_tls: OpaquePointer) {
 pub extern "C" fn register_finalizer(
     obj: ObjectReference,
     finalizer_fn: Address,
-    is_obj_ptr: bool,
+    is_func_ptr: bool,
 ) {
     memory_manager::add_finalizer(
         &SINGLETON,
-        JuliaFinalizableObject(obj, finalizer_fn, is_obj_ptr),
+        JuliaFinalizableObject { object: obj, func: finalizer_fn, is_func_ptr },
     );
 }
 
@@ -311,7 +311,7 @@ pub extern "C" fn run_finalizers_for_obj(obj: ObjectReference) {
     }
 
     for obj in finalizable_objs {
-        unsafe { ((*UPCALLS).run_finalizer_function)(obj.0, obj.1, obj.2) }
+        unsafe { ((*UPCALLS).run_finalizer_function)(obj.object, obj.func, obj.is_func_ptr) }
         {
             let mut fin_roots = FINALIZER_ROOTS.write().unwrap();
             let removed = fin_roots.remove(&obj);

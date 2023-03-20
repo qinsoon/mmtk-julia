@@ -86,7 +86,8 @@ impl Collection<JuliaVM> for VMCollection {
 
         info!("GC Done!");
 
-        crate::ROOTS.lock().unwrap().clear();
+        crate::ROOT_NODES.lock().unwrap().clear();
+        crate::ROOT_EDGES.lock().unwrap().clear();
 
         if AtomicBool::load(&USER_TRIGGERED_GC, Ordering::SeqCst) {
             AtomicBool::store(&USER_TRIGGERED_GC, false, Ordering::SeqCst);
@@ -154,7 +155,7 @@ pub extern "C" fn mmtk_run_finalizers(at_exit: bool) {
 
             match to_be_finalized {
                 Some(obj) => unsafe {
-                    ((*UPCALLS).run_finalizer_function)(obj.0, obj.1, obj.2);
+                    ((*UPCALLS).run_finalizer_function)(obj.object, obj.func, obj.is_func_ptr);
                     {
                         let mut fin_roots = FINALIZER_ROOTS.write().unwrap();
                         let removed = fin_roots.remove(&obj);
@@ -177,7 +178,7 @@ pub extern "C" fn mmtk_run_finalizers(at_exit: bool) {
                         let inserted = fin_roots.insert(obj);
                         assert!(inserted);
                     }
-                    unsafe { ((*UPCALLS).run_finalizer_function)(obj.0, obj.1, obj.2) }
+                    unsafe { ((*UPCALLS).run_finalizer_function)(obj.object, obj.func, obj.is_func_ptr) }
                     {
                         let mut fin_roots = FINALIZER_ROOTS.write().unwrap();
                         let removed = fin_roots.remove(&obj);

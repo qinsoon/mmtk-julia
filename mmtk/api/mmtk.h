@@ -41,6 +41,7 @@ extern void post_alloc(MMTk_Mutator mutator, void* refer,
     size_t bytes, int allocator);
 
 extern void add_object_to_mmtk_roots(void *obj);
+extern void process_root_edges(void* addr, closure_pointer c, ProcessEdgeFn f);
 
 extern void* mmtk_counted_malloc(size_t size);
 extern void* mmtk_malloc(size_t size);

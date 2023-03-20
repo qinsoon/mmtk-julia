@@ -11,22 +11,26 @@ extern "C" {
 }
 
 #[derive(Copy, Clone, Eq, Hash, PartialOrd, PartialEq, Debug)]
-pub struct JuliaFinalizableObject(pub ObjectReference, pub Address, pub bool);
+pub struct JuliaFinalizableObject {
+    pub object: ObjectReference,
+    pub func: Address,
+    pub is_func_ptr: bool // func is either pointer or object
+}
 
 impl Finalizable for JuliaFinalizableObject {
     #[inline(always)]
     fn get_reference(&self) -> ObjectReference {
-        self.0
+        self.object
     }
     #[inline(always)]
     fn set_reference(&mut self, object: ObjectReference) {
-        self.0 = object;
+        self.object = object;
     }
     fn keep_alive<E: ProcessEdgesWork>(&mut self, trace: &mut E) {
         self.set_reference(trace.trace_object(self.get_reference()));
-        if !self.2 {
+        if !self.is_func_ptr {
             // not a void pointer
-            trace.trace_object(ObjectReference::from_raw_address(self.1));
+            trace.trace_object(ObjectReference::from_raw_address(self.func));
         }
     }
 }
