@@ -87,7 +87,7 @@ impl mmtk::vm::edge_shape::MemorySlice for JuliaMemorySlice {
     type EdgeIterator = JuliaMemorySliceEdgeIterator;
 
     fn iter_edges(&self) -> Self::EdgeIterator {
-        unimplemented!()
+        JuliaMemorySliceEdgeIterator{ cursor: self.start, limit: self.start.shift::<Address>(self.count as isize) }
     }
 
     fn object(&self) -> Option<ObjectReference> {

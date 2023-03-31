@@ -523,8 +523,9 @@ static void jl_gc_queue_bt_buf_mmtk(jl_ptls_t ptls2)
     }
 }
 
-void root_scan_task(jl_task_t* task)
+void root_scan_task(jl_ptls_t ptls, jl_task_t* task)
 {
+    printf("scan task: %p in thread %p\n", task, ptls); fflush(stdout);
     // This is never accessed so leave it as uninitialized.
     closure_pointer c;
 
@@ -535,20 +536,35 @@ void root_scan_task(jl_task_t* task)
 
 }
 
-static void jl_gc_queue_thread_local_mmtk(jl_ptls_t ptls2)
+static void jl_gc_queue_thread_local_mmtk(jl_ptls_t ptls)
 {
-    root_scan_task(ptls2->current_task);
+    printf("Scan thread: %p\n", ptls);
+    printf("current task = %p\n", ptls->current_task);
+    printf("root task = %p\n", ptls->root_task);
+    printf("next task = %p\n", ptls->next_task);
+    printf("prev task = %p\n", ptls->previous_task);
+    // root_scan_task(ptls2->current_task);
 
-    root_scan_task(ptls2->root_task);
+    root_scan_task(ptls, ptls->root_task);
 
-    if (ptls2->next_task) {
-        root_scan_task(ptls2->next_task);
+    // if (ptls2->next_task) {
+    //     root_scan_task(ptls2->next_task);
+    // }
+    // if (ptls2->previous_task) {
+    //     root_scan_task(ptls2->previous_task);
+    // }
+    arraylist_t *live_tasks = &ptls->heap.live_tasks;
+    printf("live tasks = %ld\n", live_tasks->len);
+    void **lst = live_tasks->items;
+    for (size_t i = 0; i < live_tasks->len; i++) {
+        jl_task_t *t = (jl_task_t *)lst[i];
+        printf("live task = %p\n", t);
+        root_scan_task(ptls, t);
     }
-    if (ptls2->previous_task) {
-        root_scan_task(ptls2->previous_task);
-    }
-    if (ptls2->previous_exception) {
-        add_object_to_mmtk_roots(ptls2->previous_exception);
+    fflush(stdout);
+
+    if (ptls->previous_exception) {
+        add_object_to_mmtk_roots(ptls->previous_exception);
     }
 }
 

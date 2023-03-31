@@ -27,7 +27,7 @@ impl Collection<JuliaVM> for VMCollection {
             // FIXME add wait var
         }
 
-        trace!("Stopped the world!")
+        info!("Stopped the world!")
     }
 
     fn resume_mutators(_tls: VMWorkerThread) {

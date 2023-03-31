@@ -48,7 +48,7 @@ pageprotect = []
 malloc_counted_size = ["mmtk/malloc_counted_size"]
 # We have to supply both immix_no_defrag and immix_no_nursery_copy to make sure immix does not assume moving.
 immix = ["malloc_counted_size", "mmtk/immix_no_defrag", "mmtk/immix_no_nursery_copy", "mmtk/immix_smaller_block", "scan_obj_c"]
-stickyimmix = ["malloc_counted_size", "mmtk/immix_no_defrag", "mmtk/immix_no_nursery_copy", "mmtk/immix_smaller_block", "scan_obj_c", "mmtk/immix_zero_on_release", "mmtk/sanity"]
+stickyimmix = ["malloc_counted_size", "mmtk/immix_no_defrag", "mmtk/immix_no_nursery_copy", "mmtk/immix_smaller_block", "scan_obj_c", "mmtk/immix_zero_on_release", "mmtk/sanity", "mmtk/extreme_assertions"]
 marksweep = ["malloc_counted_size", "scan_obj_c"]
 # FIXME update and use rust object scanner as default for immix
 scan_obj_c = []
