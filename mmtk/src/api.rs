@@ -467,3 +467,28 @@ pub extern "C" fn mmtk_memory_region_copy(mutator: *mut Mutator<JuliaVM>, src_ob
     let mutator = unsafe { &mut *mutator };
     memory_manager::memory_region_copy(mutator, src, dst);
 }
+
+#[no_mangle]
+pub extern "C" fn mmtk_immortal_region_post_alloc(start: Address, size: usize) {
+    #[cfg(feature = "stickyimmix")]
+    set_side_log_bit_for_region(start, size);
+}
+
+fn set_side_log_bit_for_region(start: Address, size: usize) {
+    info!("Bulk set {} to {} ({} bytes)", start, start + size, size);
+    use crate::mmtk::vm::ObjectModel;
+    match <JuliaVM as mmtk::vm::VMBinding>::VMObjectModel::GLOBAL_LOG_BIT_SPEC.as_spec() {
+        mmtk::util::metadata::MetadataSpec::OnSide(side) => side.bset_metadata(start, size),
+        _ => unimplemented!()
+    }
+}
+
+#[no_mangle]
+#[allow(mutable_transmutes)]
+pub extern "C" fn mmtk_set_vm_space(start: Address, size: usize) {
+    let mmtk: &mmtk::MMTK<JuliaVM> = &SINGLETON;
+    memory_manager::lazy_init_vm_space::<JuliaVM>(unsafe { std::mem::transmute(mmtk) }, start, size);
+
+    #[cfg(feature = "stickyimmix")]
+    set_side_log_bit_for_region(start, size);
+}

@@ -61,7 +61,8 @@ extern void modify_check(void* ref);
 extern int object_is_managed_by_mmtk(void* addr);
 extern void runtime_panic(void);
 
-
+extern void mmtk_immortal_region_post_alloc(void* addr, size_t size);
+extern void mmtk_set_vm_space(void* addr, size_t size);
 
 /**
  * Tracing
