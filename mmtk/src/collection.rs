@@ -140,3 +140,63 @@ impl Collection<JuliaVM> for VMCollection {
     ) {
     }
 }
+
+// #[no_mangle]
+// pub extern "C" fn mmtk_run_finalizers(at_exit: bool) {
+//     AtomicBool::store(&FINALIZERS_RUNNING, true, Ordering::SeqCst);
+
+//     if at_exit {
+//         let mut all_finalizable = memory_manager::get_all_finalizers(&SINGLETON);
+
+//         {
+//             // if the finalizer function triggers GC you don't want the objects to be GC-ed
+//             let mut fin_roots = FINALIZER_ROOTS.write().unwrap();
+
+//             for obj in all_finalizable.iter() {
+//                 let inserted = fin_roots.insert(*obj);
+//                 assert!(inserted);
+//             }
+//         }
+
+//         loop {
+//             let to_be_finalized = all_finalizable.pop();
+
+//             match to_be_finalized {
+//                 Some(obj) => unsafe {
+//                     ((*UPCALLS).run_finalizer_function)(obj.0, obj.1, obj.2);
+//                     {
+//                         let mut fin_roots = FINALIZER_ROOTS.write().unwrap();
+//                         let removed = fin_roots.remove(&obj);
+//                         assert!(removed);
+//                     }
+//                 },
+//                 None => break,
+//             }
+//         }
+//     } else {
+//         loop {
+//             let to_be_finalized = memory_manager::get_finalized_object(&SINGLETON);
+
+//             match to_be_finalized {
+//                 Some(obj) => {
+//                     {
+//                         // if the finalizer function triggers GC you don't want the objects to be GC-ed
+//                         let mut fin_roots = FINALIZER_ROOTS.write().unwrap();
+
+//                         let inserted = fin_roots.insert(obj);
+//                         assert!(inserted);
+//                     }
+//                     unsafe { ((*UPCALLS).run_finalizer_function)(obj.0, obj.1, obj.2) }
+//                     {
+//                         let mut fin_roots = FINALIZER_ROOTS.write().unwrap();
+//                         let removed = fin_roots.remove(&obj);
+//                         assert!(removed);
+//                     }
+//                 }
+//                 None => break,
+//             }
+//         }
+//     }
+
+//     AtomicBool::store(&FINALIZERS_RUNNING, false, Ordering::SeqCst);
+// }

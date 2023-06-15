@@ -37,8 +37,57 @@ JL_DLLEXPORT void (jl_mmtk_harness_end)(void)
     mmtk_harness_end();
 }
 
-JL_DLLEXPORT jl_value_t *jl_mmtk_gc_alloc_default(jl_ptls_t ptls, int pool_offset,
-                                                    int osize, void *ty)
+JL_DLLEXPORT jl_value_t *jl_mmtk_gc_alloc_default_llvm(int pool_offset, size_t osize)
+{
+    // jl_ptls_t ptls = (jl_ptls_t)jl_get_ptls_states();
+
+    // // safepoint
+    // jl_gc_safepoint_(ptls);
+
+    // jl_value_t *v;
+    // jl_taggedvalue_t *v_tagged;
+
+    // // v needs to be 16 byte aligned, therefore v_tagged needs to be offset accordingly to consider the size of header
+    // ptls->mmtk_mutator_ptr->allocators.immix[0].cursor = ptls->cursor;
+
+    // v_tagged = (jl_taggedvalue_t *) alloc(ptls->mmtk_mutator_ptr, osize, 16, 8, 0);
+
+    // ptls->cursor = ptls->mmtk_mutator_ptr->allocators.immix[0].cursor;
+    // ptls->limit = ptls->mmtk_mutator_ptr->allocators.immix[0].limit;
+
+    // v = jl_valueof(v_tagged);
+
+    // post_alloc(ptls->mmtk_mutator_ptr, v, osize, 0);
+    // ptls->gc_num.allocd += osize;
+    // ptls->gc_num.poolalloc++;
+
+    // return v;
+
+    // Is this used?
+    return (jl_value_t*) 0;
+}
+
+STATIC_INLINE void* alloc_default_object(jl_ptls_t ptls, size_t size, int offset) {
+    // int64_t delta = (-offset -(int64_t)(ptls->cursor)) & 15; // aligned to 16
+    // uint64_t aligned_addr = (uint64_t)ptls->cursor + delta;
+
+    // if(__unlikely(aligned_addr+size > (uint64_t)ptls->limit)) {
+    //     jl_ptls_t ptls2 = (jl_ptls_t)jl_get_ptls_states();
+    //     ptls2->mmtk_mutator_ptr->allocators.immix[0].cursor = ptls2->cursor;
+    //     void* res = alloc(ptls2->mmtk_mutator_ptr, size, 16, offset, 0);
+    //     ptls2->cursor = ptls2->mmtk_mutator_ptr->allocators.immix[0].cursor;
+    //     ptls2->limit = ptls2->mmtk_mutator_ptr->allocators.immix[0].limit;
+    //     return res;
+    // } else {
+    //     ptls->cursor = (void*) (aligned_addr+size);
+    //     return (void*) aligned_addr;
+    // }
+
+    // Is this used?
+    return (void*) 0;
+}
+
+JL_DLLEXPORT jl_value_t *jl_mmtk_gc_alloc_default(jl_ptls_t ptls, size_t osize, void *ty)
 {
     // safepoint
     jl_gc_safepoint();
@@ -263,112 +312,49 @@ size_t get_so_size(void* obj_raw)
         jl_array_t* a = (jl_array_t*) obj;
         if (a->flags.how == 0) {
             int ndimwords = jl_array_ndimwords(jl_array_ndims(a));
-            int tsz = sizeof(jl_array_t) + ndimwords*sizeof(size_t);
+            size_t tsz = sizeof(jl_array_t) + ndimwords*sizeof(size_t);
             if (mmtk_object_is_managed_by_mmtk(a->data)) {
                 size_t pre_data_bytes = ((size_t)a->data - a->offset*a->elsize) - (size_t)a;
                 if (pre_data_bytes > 0) { // a->data is allocated after a
                     tsz = ((size_t)a->data - a->offset*a->elsize) - (size_t)a;
                     tsz += jl_array_nbytes(a);
                 }
-                if (tsz + sizeof(jl_taggedvalue_t) > 2032) { // if it's too large to be inlined (a->data and a are disjoint objects)
-                    tsz = sizeof(jl_array_t) + ndimwords*sizeof(size_t); // simply keep the info before data
-                }
             }
-            if (tsz + sizeof(jl_taggedvalue_t) > 2032) {
-                printf("size greater than minimum!\n");
-                mmtk_runtime_panic();
-            }
-            int pool_id = jl_gc_szclass(tsz + sizeof(jl_taggedvalue_t));
-            int osize = jl_gc_sizeclasses[pool_id];
-            return osize;
+            if (a->flags.pooled && tsz > 2032) { // a->data is actually a separate object and not inlined
+                tsz = sizeof(jl_array_t) + ndimwords*sizeof(size_t);
+
+            return tsz + sizeof(jl_taggedvalue_t);
         } else if (a->flags.how == 1) {
             int ndimwords = jl_array_ndimwords(jl_array_ndims(a));
-            int tsz = sizeof(jl_array_t) + ndimwords*sizeof(size_t);
-            if (tsz + sizeof(jl_taggedvalue_t) > 2032) {
-                printf("size greater than minimum!\n");
-                mmtk_runtime_panic();
-            }
-            int pool_id = jl_gc_szclass(tsz + sizeof(jl_taggedvalue_t));
-            int osize = jl_gc_sizeclasses[pool_id];
-
-            return osize;
+            size_t tsz = sizeof(jl_array_t) + ndimwords*sizeof(size_t);
+            return tsz + sizeof(jl_taggedvalue_t);
         } else if (a->flags.how == 2) {
             int ndimwords = jl_array_ndimwords(jl_array_ndims(a));
-            int tsz = sizeof(jl_array_t) + ndimwords*sizeof(size_t);
-            if (tsz + sizeof(jl_taggedvalue_t) > 2032) {
-                printf("size greater than minimum!\n");
-                mmtk_runtime_panic();
-            }
-            int pool_id = jl_gc_szclass(tsz + sizeof(jl_taggedvalue_t));
-            int osize = jl_gc_sizeclasses[pool_id];
-
-            return osize;
+            size_t tsz = sizeof(jl_array_t) + ndimwords*sizeof(size_t);
+            return tsz + sizeof(jl_taggedvalue_t);
         } else if (a->flags.how == 3) {
             int ndimwords = jl_array_ndimwords(jl_array_ndims(a));
-            int tsz = sizeof(jl_array_t) + ndimwords * sizeof(size_t) + sizeof(void*);
-            if (tsz + sizeof(jl_taggedvalue_t) > 2032) {
-                printf("size greater than minimum!\n");
-                mmtk_runtime_panic();
-            }
-            int pool_id = jl_gc_szclass(tsz + sizeof(jl_taggedvalue_t));
-            int osize = jl_gc_sizeclasses[pool_id];
-            return osize;
+            size_t tsz = sizeof(jl_array_t) + ndimwords * sizeof(size_t) + sizeof(void*);
+            return tsz + sizeof(jl_taggedvalue_t);
         }
     } else if (vt == jl_simplevector_type) {
         size_t l = jl_svec_len(obj);
-        if (l * sizeof(void*) + sizeof(jl_svec_t) + sizeof(jl_taggedvalue_t) > 2032) {
-            printf("size greater than minimum!\n");
-            mmtk_runtime_panic();
-        }
-        int pool_id = jl_gc_szclass(l * sizeof(void*) + sizeof(jl_svec_t) + sizeof(jl_taggedvalue_t));
-        int osize = jl_gc_sizeclasses[pool_id];
-        return osize;
+        return l * sizeof(void*) + sizeof(jl_svec_t) + sizeof(jl_taggedvalue_t);
     } else if (vt == jl_module_type) {
         size_t dtsz = sizeof(jl_module_t);
-        if (dtsz + sizeof(jl_taggedvalue_t) > 2032) {
-            printf("size greater than minimum!\n");
-            mmtk_runtime_panic();
-        }
-        int pool_id = jl_gc_szclass(dtsz + sizeof(jl_taggedvalue_t));
-        int osize = jl_gc_sizeclasses[pool_id];
-        return osize;
+        return dtsz + sizeof(jl_taggedvalue_t);
     } else if (vt == jl_task_type) {
         size_t dtsz = sizeof(jl_task_t);
-        if (dtsz + sizeof(jl_taggedvalue_t) > 2032) {
-            printf("size greater than minimum!\n");
-            mmtk_runtime_panic();
-        }
-        int pool_id = jl_gc_szclass(dtsz + sizeof(jl_taggedvalue_t));
-        int osize = jl_gc_sizeclasses[pool_id];
-        return osize;
+        return dtsz + sizeof(jl_taggedvalue_t);
     } else if (vt == jl_string_type) {
         size_t dtsz = jl_string_len(obj) + sizeof(size_t) + 1;
-        if (dtsz + sizeof(jl_taggedvalue_t) > 2032) {
-            printf("size greater than minimum!\n");
-            mmtk_runtime_panic();
-        }
-        int pool_id = jl_gc_szclass_align8(dtsz + sizeof(jl_taggedvalue_t));
-        int osize = jl_gc_sizeclasses[pool_id];
-        return osize;
+        return dtsz + sizeof(jl_taggedvalue_t);
     } else if (vt == jl_method_type) {
         size_t dtsz = sizeof(jl_method_t);
-        if (dtsz + sizeof(jl_taggedvalue_t) > 2032) {
-            printf("size greater than minimum!\n");
-            mmtk_runtime_panic();
-        }
-        int pool_id = jl_gc_szclass(dtsz + sizeof(jl_taggedvalue_t));
-        
-        int osize = jl_gc_sizeclasses[pool_id];
-        return osize;
+        return dtsz + sizeof(jl_taggedvalue_t);
     } else  {
         size_t dtsz = jl_datatype_size(vt);
-        if (dtsz + sizeof(jl_taggedvalue_t) > 2032) {
-            printf("size greater than minimum!\n");
-            mmtk_runtime_panic();
-        }
-        int pool_id = jl_gc_szclass(dtsz + sizeof(jl_taggedvalue_t));
-        int osize = jl_gc_sizeclasses[pool_id];
-        return osize;
+        return dtsz + sizeof(jl_taggedvalue_t);
     }
     return 0;
 }

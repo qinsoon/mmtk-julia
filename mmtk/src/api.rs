@@ -27,6 +27,9 @@ use mmtk::Mutator;
 use std::ffi::CStr;
 use std::sync::atomic::{AtomicBool, Ordering};
 
+#[cfg(feature = "immix")]
+use crate::MAX_STANDARD_OBJECT_SIZE;
+
 #[no_mangle]
 pub extern "C" fn mmtk_gc_init(
     min_heap_size: usize,
@@ -158,6 +161,30 @@ pub extern "C" fn mmtk_destroy_mutator(mutator: *mut Mutator<JuliaVM>) {
     mutators.remove(&key);
 }
 
+#[cfg(feature = "immix")]
+#[no_mangle]
+pub extern "C" fn alloc(
+    mutator: *mut Mutator<JuliaVM>,
+    size: usize,
+    align: usize,
+    offset: usize,
+    semantics: AllocationSemantics,
+) -> Address {
+    if size >= MAX_STANDARD_OBJECT_SIZE {
+        // MAX_IMMIX_OBJECT_SIZE
+        memory_manager::alloc::<JuliaVM>(
+            unsafe { &mut *mutator },
+            size,
+            64,
+            offset,
+            AllocationSemantics::Los,
+        )
+    } else {
+        memory_manager::alloc::<JuliaVM>(unsafe { &mut *mutator }, size, align, offset, semantics)
+    }
+}
+
+#[cfg(not(feature = "immix"))]
 #[no_mangle]
 pub extern "C" fn mmtk_alloc(
     mutator: *mut Mutator<JuliaVM>,
@@ -185,6 +212,7 @@ pub extern "C" fn mmtk_alloc_large(
     )
 }
 
+#[cfg(feature = "immix")]
 #[no_mangle]
 pub extern "C" fn mmtk_post_alloc(
     mutator: *mut Mutator<JuliaVM>,
@@ -192,14 +220,28 @@ pub extern "C" fn mmtk_post_alloc(
     bytes: usize,
     semantics: AllocationSemantics,
 ) {
-    match semantics {
-        AllocationSemantics::Los => {
-            memory_manager::post_alloc::<JuliaVM>(unsafe { &mut *mutator }, refer, bytes, semantics)
-        }
-        _ => {
-            memory_manager::post_alloc::<JuliaVM>(unsafe { &mut *mutator }, refer, bytes, semantics)
-        }
+    if bytes >= MAX_STANDARD_OBJECT_SIZE {
+        // MAX_IMMIX_OBJECT_SIZE
+        memory_manager::post_alloc::<JuliaVM>(
+            unsafe { &mut *mutator },
+            refer,
+            bytes,
+            AllocationSemantics::Los,
+        )
+    } else {
+        memory_manager::post_alloc::<JuliaVM>(unsafe { &mut *mutator }, refer, bytes, semantics)
     }
+}
+
+#[cfg(not(feature = "immix"))]
+#[no_mangle]
+pub extern "C" fn post_alloc(
+    mutator: *mut Mutator<JuliaVM>,
+    refer: ObjectReference,
+    bytes: usize,
+    semantics: AllocationSemantics,
+) {
+    memory_manager::post_alloc::<JuliaVM>(unsafe { &mut *mutator }, refer, bytes, semantics)
 }
 
 #[no_mangle]
