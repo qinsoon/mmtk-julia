@@ -35,6 +35,8 @@ extern void* mmtk_alloc_large(MMTk_Mutator mutator, size_t size,
 extern void mmtk_post_alloc(MMTk_Mutator mutator, void* refer,
     size_t bytes, int allocator);
 
+extern size_t mmtk_align_alloc_size(size_t size);
+
 extern void mmtk_add_object_to_mmtk_roots(void *obj);
 extern void mmtk_process_root_edges(closure_pointer c, void* slot);
 

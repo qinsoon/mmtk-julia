@@ -161,9 +161,8 @@ pub extern "C" fn mmtk_destroy_mutator(mutator: *mut Mutator<JuliaVM>) {
     mutators.remove(&key);
 }
 
-#[cfg(feature = "immix")]
 #[no_mangle]
-pub extern "C" fn alloc(
+pub extern "C" fn mmtk_alloc(
     mutator: *mut Mutator<JuliaVM>,
     size: usize,
     align: usize,
@@ -180,20 +179,14 @@ pub extern "C" fn alloc(
             AllocationSemantics::Los,
         )
     } else {
-        memory_manager::alloc::<JuliaVM>(unsafe { &mut *mutator }, size, align, offset, semantics)
+        memory_manager::alloc::<JuliaVM>(unsafe { &mut *mutator }, mmtk_align_alloc_size(size), align, offset, semantics)
     }
 }
 
-#[cfg(not(feature = "immix"))]
 #[no_mangle]
-pub extern "C" fn mmtk_alloc(
-    mutator: *mut Mutator<JuliaVM>,
-    size: usize,
-    align: usize,
-    offset: usize,
-    semantics: AllocationSemantics,
-) -> Address {
-    memory_manager::alloc::<JuliaVM>(unsafe { &mut *mutator }, size, align, offset, semantics)
+pub extern "C" fn mmtk_align_alloc_size(size: usize) -> usize {
+    use crate::mmtk::vm::VMBinding;
+    mmtk::util::conversions::raw_align_up(size, JuliaVM::MIN_ALIGNMENT)
 }
 
 #[no_mangle]

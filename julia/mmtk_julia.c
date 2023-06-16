@@ -323,19 +323,20 @@ size_t get_so_size(void* obj_raw)
             if (a->flags.pooled && tsz > 2032) { // a->data is actually a separate object and not inlined
                 tsz = sizeof(jl_array_t) + ndimwords*sizeof(size_t);
 
-            return tsz + sizeof(jl_taggedvalue_t);
-        } else if (a->flags.how == 1) {
-            int ndimwords = jl_array_ndimwords(jl_array_ndims(a));
-            size_t tsz = sizeof(jl_array_t) + ndimwords*sizeof(size_t);
-            return tsz + sizeof(jl_taggedvalue_t);
-        } else if (a->flags.how == 2) {
-            int ndimwords = jl_array_ndimwords(jl_array_ndims(a));
-            size_t tsz = sizeof(jl_array_t) + ndimwords*sizeof(size_t);
-            return tsz + sizeof(jl_taggedvalue_t);
-        } else if (a->flags.how == 3) {
-            int ndimwords = jl_array_ndimwords(jl_array_ndims(a));
-            size_t tsz = sizeof(jl_array_t) + ndimwords * sizeof(size_t) + sizeof(void*);
-            return tsz + sizeof(jl_taggedvalue_t);
+                return tsz + sizeof(jl_taggedvalue_t);
+            } else if (a->flags.how == 1) {
+                int ndimwords = jl_array_ndimwords(jl_array_ndims(a));
+                size_t tsz = sizeof(jl_array_t) + ndimwords*sizeof(size_t);
+                return tsz + sizeof(jl_taggedvalue_t);
+            } else if (a->flags.how == 2) {
+                int ndimwords = jl_array_ndimwords(jl_array_ndims(a));
+                size_t tsz = sizeof(jl_array_t) + ndimwords*sizeof(size_t);
+                return tsz + sizeof(jl_taggedvalue_t);
+            } else if (a->flags.how == 3) {
+                int ndimwords = jl_array_ndimwords(jl_array_ndims(a));
+                size_t tsz = sizeof(jl_array_t) + ndimwords * sizeof(size_t) + sizeof(void*);
+                return tsz + sizeof(jl_taggedvalue_t);
+            }
         }
     } else if (vt == jl_simplevector_type) {
         size_t l = jl_svec_len(obj);
