@@ -64,6 +64,7 @@ JL_DLLEXPORT jl_value_t *jl_mmtk_gc_alloc_default_llvm(int pool_offset, size_t o
     // return v;
 
     // Is this used?
+    mmtk_unreachable();
     return (jl_value_t*) 0;
 }
 
@@ -84,6 +85,7 @@ STATIC_INLINE void* alloc_default_object(jl_ptls_t ptls, size_t size, int offset
     // }
 
     // Is this used?
+    mmtk_unreachable();
     return (void*) 0;
 }
 
