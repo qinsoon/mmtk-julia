@@ -37,58 +37,6 @@ JL_DLLEXPORT void (jl_mmtk_harness_end)(void)
     mmtk_harness_end();
 }
 
-JL_DLLEXPORT jl_value_t *jl_mmtk_gc_alloc_default_llvm(int pool_offset, size_t osize)
-{
-    // jl_ptls_t ptls = (jl_ptls_t)jl_get_ptls_states();
-
-    // // safepoint
-    // jl_gc_safepoint_(ptls);
-
-    // jl_value_t *v;
-    // jl_taggedvalue_t *v_tagged;
-
-    // // v needs to be 16 byte aligned, therefore v_tagged needs to be offset accordingly to consider the size of header
-    // ptls->mmtk_mutator_ptr->allocators.immix[0].cursor = ptls->cursor;
-
-    // v_tagged = (jl_taggedvalue_t *) alloc(ptls->mmtk_mutator_ptr, osize, 16, 8, 0);
-
-    // ptls->cursor = ptls->mmtk_mutator_ptr->allocators.immix[0].cursor;
-    // ptls->limit = ptls->mmtk_mutator_ptr->allocators.immix[0].limit;
-
-    // v = jl_valueof(v_tagged);
-
-    // post_alloc(ptls->mmtk_mutator_ptr, v, osize, 0);
-    // ptls->gc_num.allocd += osize;
-    // ptls->gc_num.poolalloc++;
-
-    // return v;
-
-    // Is this used?
-    mmtk_unreachable();
-    return (jl_value_t*) 0;
-}
-
-STATIC_INLINE void* alloc_default_object(jl_ptls_t ptls, size_t size, int offset) {
-    // int64_t delta = (-offset -(int64_t)(ptls->cursor)) & 15; // aligned to 16
-    // uint64_t aligned_addr = (uint64_t)ptls->cursor + delta;
-
-    // if(__unlikely(aligned_addr+size > (uint64_t)ptls->limit)) {
-    //     jl_ptls_t ptls2 = (jl_ptls_t)jl_get_ptls_states();
-    //     ptls2->mmtk_mutator_ptr->allocators.immix[0].cursor = ptls2->cursor;
-    //     void* res = alloc(ptls2->mmtk_mutator_ptr, size, 16, offset, 0);
-    //     ptls2->cursor = ptls2->mmtk_mutator_ptr->allocators.immix[0].cursor;
-    //     ptls2->limit = ptls2->mmtk_mutator_ptr->allocators.immix[0].limit;
-    //     return res;
-    // } else {
-    //     ptls->cursor = (void*) (aligned_addr+size);
-    //     return (void*) aligned_addr;
-    // }
-
-    // Is this used?
-    mmtk_unreachable();
-    return (void*) 0;
-}
-
 JL_DLLEXPORT jl_value_t *jl_mmtk_gc_alloc_default(jl_ptls_t ptls, size_t osize, void *ty)
 {
     // safepoint

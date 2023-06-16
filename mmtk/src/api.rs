@@ -27,7 +27,6 @@ use mmtk::Mutator;
 use std::ffi::CStr;
 use std::sync::atomic::{AtomicBool, Ordering};
 
-#[cfg(feature = "immix")]
 use crate::MAX_STANDARD_OBJECT_SIZE;
 
 #[no_mangle]
