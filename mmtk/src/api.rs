@@ -168,18 +168,10 @@ pub extern "C" fn mmtk_alloc(
     offset: usize,
     semantics: AllocationSemantics,
 ) -> Address {
-    if size >= MAX_STANDARD_OBJECT_SIZE {
-        // MAX_IMMIX_OBJECT_SIZE
-        memory_manager::alloc::<JuliaVM>(
-            unsafe { &mut *mutator },
-            size,
-            64,
-            offset,
-            AllocationSemantics::Los,
-        )
-    } else {
-        memory_manager::alloc::<JuliaVM>(unsafe { &mut *mutator }, mmtk_align_alloc_size(size), align, offset, semantics)
-    }
+    let allocsz = mmtk_align_alloc_size(size);
+    debug_assert!(semantics != AllocationSemantics::Default || allocsz < MAX_STANDARD_OBJECT_SIZE, "alloc {} with {:?} (aligned up to {}) is larger than max non-los object size {}", size, semantics, allocsz, MAX_STANDARD_OBJECT_SIZE);
+    debug_assert!(semantics != AllocationSemantics::Los);
+    memory_manager::alloc::<JuliaVM>(unsafe { &mut *mutator }, allocsz, align, offset, semantics)
 }
 
 #[no_mangle]
@@ -195,6 +187,9 @@ pub extern "C" fn mmtk_alloc_large(
     align: usize,
     offset: usize,
 ) -> Address {
+    debug_assert!(size >= MAX_STANDARD_OBJECT_SIZE);
+    debug_assert_eq!(align, 64);
+
     memory_manager::alloc::<JuliaVM>(
         unsafe { &mut *mutator },
         size,
@@ -212,17 +207,9 @@ pub extern "C" fn mmtk_post_alloc(
     bytes: usize,
     semantics: AllocationSemantics,
 ) {
-    if bytes >= MAX_STANDARD_OBJECT_SIZE {
-        // MAX_IMMIX_OBJECT_SIZE
-        memory_manager::post_alloc::<JuliaVM>(
-            unsafe { &mut *mutator },
-            refer,
-            bytes,
-            AllocationSemantics::Los,
-        )
-    } else {
-        memory_manager::post_alloc::<JuliaVM>(unsafe { &mut *mutator }, refer, bytes, semantics)
-    }
+    let allocsz = mmtk_align_alloc_size(bytes);
+    debug_assert!(semantics != AllocationSemantics::Default || allocsz < MAX_STANDARD_OBJECT_SIZE, "Post alloc {} with {:?} (aligned up to {}) is larger than max non-los object size {}", bytes, semantics, allocsz, MAX_STANDARD_OBJECT_SIZE);
+    memory_manager::post_alloc::<JuliaVM>(unsafe { &mut *mutator }, refer, allocsz, semantics)
 }
 
 #[cfg(not(feature = "immix"))]

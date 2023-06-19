@@ -256,13 +256,14 @@ size_t get_so_size(void* obj_raw)
     uintptr_t tag = (uintptr_t)jl_typeof(obj);
     jl_datatype_t *vt = (jl_datatype_t*)tag;
 
+    size_t tsz = 0;
     if ((uintptr_t)vt == jl_buff_tag) {
         return mmtk_get_obj_size(obj);
     } else if (vt->name == jl_array_typename) {
         jl_array_t* a = (jl_array_t*) obj;
         if (a->flags.how == 0) {
             int ndimwords = jl_array_ndimwords(jl_array_ndims(a));
-            size_t tsz = sizeof(jl_array_t) + ndimwords*sizeof(size_t);
+            tsz = sizeof(jl_array_t) + ndimwords*sizeof(size_t);
             if (mmtk_object_is_managed_by_mmtk(a->data)) {
                 size_t pre_data_bytes = ((size_t)a->data - a->offset*a->elsize) - (size_t)a;
                 if (pre_data_bytes > 0) { // a->data is allocated after a
@@ -272,42 +273,40 @@ size_t get_so_size(void* obj_raw)
             }
             if (a->flags.pooled && tsz > 2032) { // a->data is actually a separate object and not inlined
                 tsz = sizeof(jl_array_t) + ndimwords*sizeof(size_t);
-
-                return tsz + sizeof(jl_taggedvalue_t);
-            } else if (a->flags.how == 1) {
-                int ndimwords = jl_array_ndimwords(jl_array_ndims(a));
-                size_t tsz = sizeof(jl_array_t) + ndimwords*sizeof(size_t);
-                return tsz + sizeof(jl_taggedvalue_t);
-            } else if (a->flags.how == 2) {
-                int ndimwords = jl_array_ndimwords(jl_array_ndims(a));
-                size_t tsz = sizeof(jl_array_t) + ndimwords*sizeof(size_t);
-                return tsz + sizeof(jl_taggedvalue_t);
-            } else if (a->flags.how == 3) {
-                int ndimwords = jl_array_ndimwords(jl_array_ndims(a));
-                size_t tsz = sizeof(jl_array_t) + ndimwords * sizeof(size_t) + sizeof(void*);
-                return tsz + sizeof(jl_taggedvalue_t);
             }
+            tsz = tsz + sizeof(jl_taggedvalue_t);
+        } else if (a->flags.how == 1) {
+            int ndimwords = jl_array_ndimwords(jl_array_ndims(a));
+            tsz = sizeof(jl_array_t) + ndimwords*sizeof(size_t) + sizeof(jl_taggedvalue_t);
+        } else if (a->flags.how == 2) {
+            int ndimwords = jl_array_ndimwords(jl_array_ndims(a));
+            tsz = sizeof(jl_array_t) + ndimwords*sizeof(size_t) + sizeof(jl_taggedvalue_t);
+        } else if (a->flags.how == 3) {
+            int ndimwords = jl_array_ndimwords(jl_array_ndims(a));
+            tsz = sizeof(jl_array_t) + ndimwords * sizeof(size_t) + sizeof(void*) + sizeof(jl_taggedvalue_t);
         }
     } else if (vt == jl_simplevector_type) {
         size_t l = jl_svec_len(obj);
-        return l * sizeof(void*) + sizeof(jl_svec_t) + sizeof(jl_taggedvalue_t);
+        tsz = l * sizeof(void*) + sizeof(jl_svec_t) + sizeof(jl_taggedvalue_t);
     } else if (vt == jl_module_type) {
         size_t dtsz = sizeof(jl_module_t);
-        return dtsz + sizeof(jl_taggedvalue_t);
+        tsz = dtsz + sizeof(jl_taggedvalue_t);
     } else if (vt == jl_task_type) {
         size_t dtsz = sizeof(jl_task_t);
-        return dtsz + sizeof(jl_taggedvalue_t);
+        tsz = dtsz + sizeof(jl_taggedvalue_t);
     } else if (vt == jl_string_type) {
         size_t dtsz = jl_string_len(obj) + sizeof(size_t) + 1;
-        return dtsz + sizeof(jl_taggedvalue_t);
+        tsz = dtsz + sizeof(jl_taggedvalue_t);
     } else if (vt == jl_method_type) {
         size_t dtsz = sizeof(jl_method_t);
-        return dtsz + sizeof(jl_taggedvalue_t);
+        tsz = dtsz + sizeof(jl_taggedvalue_t);
     } else  {
         size_t dtsz = jl_datatype_size(vt);
-        return dtsz + sizeof(jl_taggedvalue_t);
+        tsz = dtsz + sizeof(jl_taggedvalue_t);
     }
-    return 0;
+    assert(tsz != 0);
+    size_t aligned = mmtk_align_alloc_size(tsz);
+    return aligned;
 }
 
 void run_finalizer_function(void *o_raw, void *ff_raw, bool is_ptr)
