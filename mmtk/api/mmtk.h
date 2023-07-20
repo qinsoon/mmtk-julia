@@ -38,16 +38,19 @@ extern void mmtk_post_alloc(MMTk_Mutator mutator, void* refer,
 extern void mmtk_add_object_to_mmtk_roots(void *obj);
 extern void mmtk_process_root_edges(closure_pointer c, void* slot);
 
-extern void* mmtk_counted_malloc(size_t size);
 extern void* mmtk_malloc(size_t size);
-extern void* mmtk_counted_calloc(size_t n, size_t size);
 extern void* mmtk_calloc(size_t n, size_t size);
 extern void* mmtk_realloc(void* addr, size_t size);
-extern void* mmtk_realloc_with_old_size(void* addr, size_t size, size_t old_size);
-extern void mmtk_free_with_size(void* addr, size_t old_size);
 extern void mmtk_free(void* addr);
-extern void* mmtk_malloc_aligned(size_t size, size_t alignment);
-extern void mmtk_free_aligned(void* addr);
+extern int mmtk_posix_memalign(void** ptr, size_t align, size_t size);
+extern void* mmtk_counted_malloc(size_t size);
+extern void* mmtk_counted_calloc(size_t n, size_t size);
+extern void* mmtk_counted_realloc_with_old_size(void* addr, size_t size, size_t old_size);
+extern void mmtk_counted_free_with_size(void* addr, size_t old_size);
+extern void mmtk_counted_free(void* addr);
+extern int mmtk_counted_posix_memalign(void** ptr, size_t align, size_t size);
+// extern void* mmtk_malloc_aligned(size_t size, size_t alignment);
+// extern void mmtk_free_aligned(void* addr);
 
 extern bool mmtk_is_live_object(void* ref);
 extern bool mmtk_is_mapped_object(void* ref);
