@@ -24,10 +24,17 @@ impl Scanning<JuliaVM> for VMScanning {
     ) {
         // This allows us to reuse mmtk_scan_gcstack which expectes an EdgeVisitor
         struct EdgeBuffer {
+            parent: Option<ObjectReference>,
             pub buffer: Vec<JuliaVMEdge>,
         }
         impl mmtk::vm::EdgeVisitor<JuliaVMEdge> for EdgeBuffer {
+            fn set_parent(&mut self, parent: ObjectReference) {
+                self.parent = Some(parent);
+            }
             fn visit_edge(&mut self, edge: JuliaVMEdge) {
+                use probe::probe;
+                use mmtk::vm::edge_shape::Edge;
+                probe!(mmtk, follow_edge, { self.parent.map_or(0, |p| p.value()) }, { edge.load().value() });
                 self.buffer.push(edge);
             }
         }
@@ -37,12 +44,13 @@ impl Scanning<JuliaVM> for VMScanning {
         use mmtk::util::Address;
 
         let ptls: &mut mmtk__jl_tls_states_t = unsafe { std::mem::transmute(mutator.mutator_tls) };
-        let mut edge_buffer = EdgeBuffer { buffer: vec![] };
+        let mut edge_buffer = EdgeBuffer { parent: None, buffer: vec![] };
         let mut node_buffer = vec![];
 
         // Scan thread local from ptls: See gc_queue_thread_local in gc.c
         let mut root_scan_task = |task: *const mmtk__jl_task_t| {
             if !task.is_null() {
+                edge_buffer.set_parent(ObjectReference::from_raw_address(Address::from_ptr(task)));
                 unsafe {
                     crate::julia_scanning::mmtk_scan_gcstack(task, &mut edge_buffer);
                 }

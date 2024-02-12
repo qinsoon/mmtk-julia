@@ -109,6 +109,39 @@ impl ObjectModel<JuliaVM> for VMObjectModel {
     fn dump_object(_object: ObjectReference) {
         unimplemented!()
     }
+
+    fn is_object_sane(object: ObjectReference) -> bool {
+        use crate::julia_scanning::*;
+
+        let vt = unsafe { mmtk_jl_typeof(object.to_raw_address()) };
+        assert!(!vt.is_null());
+        // assert!(memory_manager::is_in_mmtk_spaces::<JuliaVM>(ObjectReference::from_raw_address(vt)), "vt {:?} is not in MMTk spaces");
+
+        unsafe {
+            if vt as usize == JULIA_BUFF_TAG {
+                true
+            } else if vt == jl_symbol_type {
+                true
+            } else if vt == jl_simplevector_type {
+                true
+            } else if (*vt).name == jl_array_typename {
+                true
+            } else if vt == jl_module_type {
+                true
+            } else if vt == jl_task_type {
+                true
+            } else if vt == jl_string_type {
+                true
+            } else if vt == jl_weakref_type {
+                true
+            } else {
+                // data type
+                let layout = (*vt).layout;
+                assert!(!layout.is_null(), "layout {:?} from vt {:?} is null", layout, vt);
+                true
+            }
+        }
+    }
 }
 
 #[inline(always)]
