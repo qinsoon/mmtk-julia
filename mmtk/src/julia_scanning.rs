@@ -44,6 +44,50 @@ pub unsafe fn mmtk_jl_typeof(addr: Address) -> *const mmtk_jl_datatype_t {
 
 const PRINT_OBJ_TYPE: bool = false;
 
+use std::sync::Mutex;
+use std::collections::HashSet;
+
+lazy_static!{
+    pub static ref DATATYPE_NAMES: Mutex<HashSet<String>> = Mutex::new(HashSet::new());
+}
+
+pub fn get_julia_object_type_string(obj: &ObjectReference) -> &str {
+    use std::ffi::CStr;
+    unsafe {
+        // get Julia object type
+        let vt = mmtk_jl_typeof(obj.to_raw_address());
+
+        if vt as usize == JULIA_BUFF_TAG {
+            return "buffer";
+        } else if vt == jl_symbol_type {
+            return "jl_symbol";
+        } else if vt == jl_simplevector_type {
+            return "jl_simplevector";
+        } else if (*vt).name == jl_array_typename {
+            return "jl_array";
+        } else if vt == jl_module_type {
+            return "jl_module";
+        } else if vt == jl_task_type {
+            return "jl_task";
+        } else if vt == jl_string_type {
+            return "jl_string";
+        } else if vt == jl_weakref_type {
+            return "jl_weakref";
+        } else {
+            // Get the actual name
+            let typename = (*vt).name;
+            let sym = (*typename).name;
+            let sym_addr = Address::from_mut_ptr(sym);
+            let sym_char_ptr = sym_addr + mmtk::util::conversions::raw_align_up(std::mem::size_of::<mmtk__jl_sym_t>(), std::mem::size_of::<Address>());
+            let sym_char: &CStr = CStr::from_ptr(sym_char_ptr.to_ptr());
+            let sym_str: &str = sym_char.to_str().unwrap();
+            DATATYPE_NAMES.lock().unwrap().insert(sym_str.to_owned());
+            // return "jl_datatype";
+            return sym_char.to_str().unwrap();
+        }
+    }
+}
+
 // This function is a rewrite of `gc_mark_outrefs()` in `gc.c`
 // INFO: *_custom() functions are acessors to bitfields that do not use bindgen generated code.
 #[inline(always)]
@@ -277,6 +321,9 @@ pub unsafe fn scan_julia_object<SV: SlotVisitor<JuliaVMSlot>>(obj: Address, clos
         }
 
         let ta = obj.to_ptr::<mmtk_jl_task_t>();
+
+        #[cfg(feature = "conservative")]
+        crate::conservative::check_task_scanned(obj);
 
         // transitively pinnig of stack roots happens during root
         // processing so it's fine to have only one closure here

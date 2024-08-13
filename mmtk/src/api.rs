@@ -543,3 +543,8 @@ pub extern "C" fn mmtk_unpin_object(_object: ObjectReference) -> bool {
 pub extern "C" fn mmtk_is_pinned(_object: ObjectReference) -> bool {
     false
 }
+
+#[no_mangle]
+pub extern "C" fn mmtk_log_object_info(object: usize) {
+    memory_manager::log_object_info::<JuliaVM>(unsafe { ObjectReference::from_raw_address_unchecked(Address::from_usize(object)) })
+}

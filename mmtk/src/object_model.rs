@@ -113,6 +113,8 @@ impl ObjectModel<JuliaVM> for VMObjectModel {
             );
         }
 
+        crate::collection::OBJECTS_COPIED.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+
         to_obj
     }
 

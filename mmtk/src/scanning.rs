@@ -55,13 +55,30 @@ impl Scanning<JuliaVM> for VMScanning {
         let mut pinning_slot_buffer = SlotBuffer { buffer: vec![] }; // roots from the shadow stack that we know that do not need to be transitively pinned
         let mut node_buffer = vec![];
 
+        let mut conservative_buffer = vec![];
+
+        log::info!(
+            "Scanning ptls {:?}, pthread {:x}",
+            mutator.mutator_tls,
+            pthread,
+        );
+
         // Conservatively scan registers saved with the thread
         #[cfg(feature = "conservative")]
-        crate::conservative::mmtk_conservative_scan_ptls_registers(ptls);
+        {
+            crate::conservative::mmtk_conservative_scan_ptls_registers(ptls, &mut conservative_buffer);
+            crate::conservative::mmtk_conservative_scan_ptls_stack(ptls, &mut conservative_buffer);
+        }
 
         // Scan thread local from ptls: See gc_queue_thread_local in gc.c
         let mut root_scan_task = |task: *const mmtk__jl_task_t, task_is_root: bool| {
             if !task.is_null() {
+                log::info!(
+                    "Scanning task {:?}",
+                    task,
+                );
+                #[cfg(feature = "conservative")]
+                crate::conservative::CONSERVATIVE_SCANNED_TASK.lock().unwrap().insert(Address::from_ptr(task));
                 // Scan shadow stack
                 unsafe {
                     // process gc preserve stack
@@ -75,16 +92,11 @@ impl Scanning<JuliaVM> for VMScanning {
                     );
                 }
                 // Conservatively scan native stacks to make sure we won't move objects that the runtime is using.
-                log::debug!(
-                    "Scanning ptls {:?}, pthread {:x}",
-                    mutator.mutator_tls,
-                    pthread
-                );
                 // Conservative scan stack and registers
                 #[cfg(feature = "conservative")]
                 {
-                    crate::conservative::mmtk_conservative_scan_native_stack(task);
-                    crate::conservative::mmtk_conservative_scan_task_registers(task);
+                    crate::conservative::mmtk_conservative_scan_task_registers(task, &mut conservative_buffer);
+                    crate::conservative::mmtk_conservative_scan_task_stack(task, &mut conservative_buffer);
                 }
 
                 if task_is_root {
@@ -176,6 +188,171 @@ impl Scanning<JuliaVM> for VMScanning {
         for nodes in node_buffer.chunks(CAPACITY_PER_PACKET).map(|c| c.to_vec()) {
             factory.create_process_pinning_roots_work(nodes);
         }
+        // Conservatively found objs
+        let tpin_types: [&str; 0] = [
+            // "buffer",
+            // "jl_symbol",
+            // "jl_simplevector",
+            // "jl_string",
+            // "jl_weakref",
+            // "jl_array",
+            // "jl_module",
+            // "jl_task",
+            // "jl_datatype",
+
+            // "#106#107",
+            // "#382#383",
+            // "#433#435",
+            // "#441#444",
+            // "#469#470",
+            // "#487#492",
+            // "#489#494",
+            // "#dst#524",
+            // "AbstractIterationResult",
+            // "ArgInfo",
+            // "Argument",
+            // "BBIdxIter",
+            // "BackedgePair",
+            // "BasicBlock",
+            // "BasicStmtChange",
+            // "BestguessInfo",
+            // "BitArray",
+            // "BitSet",
+            // "BlockLiveness",
+            // "Box",
+            // "CFG",
+            // "CFGInliningState",
+            // "CachedMethodTable",
+            // "CachedResult",
+            // "CallMeta",
+            // "DataType",
+
+            // "CodeInfo",
+            // "CodeInstance",
+            // "Expr", // <-----
+            // "Method",
+            // "MethodInstance",
+            // "MethodTable",
+
+            // "ConcreteResult",
+            // "Conditional",
+            // "Const",
+            // "ConstCallInfo",
+            // "ConstCallResults",
+            // "ConstantCase",
+            // "EdgeCallResult",
+            // "EdgeTracker",
+            // "Effects",
+            // "Enumerate",
+
+            // "Float64",
+            // "Generator",
+            // "GenericDomTree",
+            // "GlobalRef",
+            // "GotoIfNot",
+            // "GotoNode",
+            // "IRCode",
+            // "IdDict",
+            // "IdSet",
+            // "IncrementalCompact",
+            // "InfStackUnwind",
+            // "InferenceLoopState",
+            // "InferenceParams",
+            // "InferenceResult",
+            // "InferenceState",
+            // "InliningCase",
+            // "InliningEdgeTracker",
+            // "InliningState",
+            // "InliningTodo",
+            // "InsertBefore",
+            // "InsertHere",
+            // "Instruction",
+            // "InstructionStream",
+            // "Int64",
+            // "InterConditional",
+            // "IntrinsicFunction",
+            // "InvokeCase",
+            // "JLOptions",
+            // "LazyGenericDomtree",
+            // "LiftedValue",
+            // "LineInfoNode",
+            // "LineNumberNode",
+            // "LinearIndices",
+            // "MethodCallResult",
+            // "MethodLookupResult",
+            // "MethodMatch",
+            // "MethodMatchInfo",
+            // "MethodMatchKey",
+            // "MethodMatchResult",
+            // "MethodMatches",
+            // "NamedTuple",
+            // "NativeInterpreter",
+            // "NewInstruction",
+            // "NewNodeInfo",
+            // "NewNodeStream",
+            // "NewSSAValue",
+            // "OldSSAValue",
+            // "OneTo",
+            // "OptimizationParams",
+            // "OptimizationState",
+            // "Pair",
+            // "Pairs",
+            // "PartialStruct",
+            // "PhiNode",
+            // "PiNode",
+            // "Ptr",
+            // "QuoteNode",
+            // "RTEffects",
+            // "RefValue",
+            // "ReturnNode",
+            // "Reverse",
+            // "SSADefUse",
+            // "SSAValue",
+            // "SemiConcreteResult",
+            // "Signature",
+            // "SlotInfo",
+            // "SlotNumber",
+            // "StateUpdate",
+            // "StmtInfo",
+            // "StmtRange",
+            // "Tuple",
+            // "TwoPhaseDefUseMap",
+            // "TypeMapEntry",
+            // "TypeMapLevel",
+            // "TypeName",
+            // "TypeVar",
+            // "TypedSlot",
+            // "TypeofVararg",
+            // "TypesView",
+            // "UInt32",
+            // "UInt64",
+            // "Union",
+            // "UnionAll",
+            // "UnionSplitApplyCallInfo",
+            // "UnionSplitInfo",
+            // "UnionSplitMethodMatches",
+            // "UnitRange",
+            // "UseRef",
+            // "UseRefIterator",
+            // "VarState",
+            // "WorldRange",
+            // "WorldView",
+            // "Zip",
+        ];
+        let mut conservative_tpin = vec![];
+        for obj in conservative_buffer {
+            let type_name = crate::julia_scanning::get_julia_object_type_string(&obj);
+            if tpin_types.iter().any(|&s| s == type_name) {
+                // Tpin them
+                conservative_tpin.push(obj);
+            } else {
+                // Those will be pinned.
+                crate::conservative::CONSERVATIVE_ROOTS.lock().unwrap().insert(obj);
+            }
+        }
+        for tpinning_roots in conservative_tpin.chunks(CAPACITY_PER_PACKET).map(|c| c.to_vec()) {
+            factory.create_process_tpinning_roots_work(tpinning_roots);
+        }
     }
 
     fn scan_vm_specific_roots(
@@ -194,6 +371,7 @@ impl Scanning<JuliaVM> for VMScanning {
         object: ObjectReference,
         slot_visitor: &mut SV,
     ) {
+        crate::collection::OBJECTS_SCANNED.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
         process_object(object, slot_visitor);
     }
 

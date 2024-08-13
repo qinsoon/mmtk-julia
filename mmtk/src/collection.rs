@@ -17,6 +17,19 @@ extern "C" {
     pub static jl_gc_disable_counter: AtomicU32;
 }
 
+pub static OBJECTS_SCANNED: AtomicU64 = AtomicU64::new(0);
+pub static OBJECTS_COPIED: AtomicU64 = AtomicU64::new(0);
+pub static GC_COUNT: AtomicU64 = AtomicU64::new(0);
+
+#[no_mangle]
+fn gc_start(count: u64) {
+    info!("GC #{} starts", count);
+}
+#[no_mangle]
+fn gc_end(count: u64) {
+    info!("GC #{} ends", count);
+}
+
 pub struct VMCollection {}
 
 impl Collection<JuliaVM> for VMCollection {
@@ -44,12 +57,32 @@ impl Collection<JuliaVM> for VMCollection {
         let now = unsafe { ((*UPCALLS).jl_hrtime)() };
         trace!("gc_start = {}", now);
         GC_START.store(now, Ordering::Relaxed);
+
+        OBJECTS_SCANNED.store(0, Ordering::SeqCst);
+        OBJECTS_COPIED.store(0, Ordering::SeqCst);
+
+        #[cfg(feature = "conservative")]
+        crate::conservative::CONSERVATIVE_SCANNED_TASK.lock().unwrap().clear();
+
+        gc_start(GC_COUNT.load(Ordering::SeqCst));
     }
 
     fn resume_mutators(_tls: VMWorkerThread) {
         // unpin conservative roots
         #[cfg(feature = "conservative")]
         crate::conservative::unpin_conservative_roots();
+
+        // {
+        //     let mut names: Vec<String> = crate::julia_scanning::DATATYPE_NAMES.lock().unwrap().iter().map(|ref_s| ref_s.clone()).collect();
+        //     names.sort();
+        //     println!("Datatype names:");
+        //     for n in names {
+        //         println!("\"{}\",", n);
+        //     }
+        // }
+
+        gc_end(GC_COUNT.load(Ordering::SeqCst));
+        GC_COUNT.fetch_add(1, Ordering::SeqCst);
 
         // Get the end time of the GC
         let end = unsafe { ((*UPCALLS).jl_hrtime)() };
@@ -74,6 +107,7 @@ impl Collection<JuliaVM> for VMCollection {
             crate::api::mmtk_used_bytes(),
             crate::api::mmtk_total_bytes()
         );
+        info!("Objects: scanned = {}, copied = {}", OBJECTS_SCANNED.load(Ordering::SeqCst), OBJECTS_COPIED.load(Ordering::SeqCst));
 
         trace!("Resuming mutators.");
     }

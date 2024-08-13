@@ -595,7 +595,20 @@ uint64_t mmtk_jl_hrtime(void) JL_NOTSAFEPOINT
 
 JL_DLLEXPORT void *mmtk_jl_task_stack_buffer(void *task, size_t *size, int *ptid)
 {
-    return jl_task_stack_buffer((jl_task_t *)task, size, ptid);
+    char* stack_start;
+    size_t stack_size;
+    // return jl_task_stack_buffer((jl_task_t *)task, size, ptid);
+    char* active_start = 0, *active_end = 0, *total_start = 0, *total_end = 0;
+    jl_active_task_stack((jl_task_t*)task, &active_start, &active_end, &total_start, &total_end);
+    // if (active_start == 0 && active_end == 0) {
+    //     stack_start = total_start;
+    //     stack_size = total_end - total_start;
+    // } else {
+    //     stack_start = active_start;
+    //     stack_size = active_end - active_start;
+    // }
+    *size = total_end - total_start;
+    return (void*) total_start;
 }
 
 Julia_Upcalls mmtk_upcalls = (Julia_Upcalls) {
