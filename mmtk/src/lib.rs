@@ -126,6 +126,11 @@ pub struct Julia_Upcalls {
         size: *mut u64,
         ptid: *mut i32,
     ) -> Address,
+    pub mmtk_jl_get_all_mutators: extern "C" fn(
+        mutators: *mut *mut *mut mmtk::Mutator<JuliaVM>,
+        threads: *mut *mut *mut crate::julia_types::mmtk__jl_tls_states_t,
+        n: *mut i32,
+    )
 }
 
 pub static mut UPCALLS: *const Julia_Upcalls = null_mut();

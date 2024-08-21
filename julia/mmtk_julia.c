@@ -611,6 +611,29 @@ JL_DLLEXPORT void *mmtk_jl_task_stack_buffer(void *task, size_t *size, int *ptid
     return (void*) total_start;
 }
 
+JL_DLLEXPORT void mmtk_jl_get_all_mutators(void*** mutators, void*** threads, int* n)
+{
+    size_t n_threads = jl_atomic_load_acquire(&jl_n_threads);
+    jl_ptls_t *states = jl_atomic_load_relaxed(&jl_all_tls_states);
+
+    int n_mutators = 0;
+    *mutators = (void*) malloc(8 * n_threads);
+    *threads = (void**) malloc(8 * n_threads);
+    for (size_t i = 0; i < n_threads; i++) {
+        jl_ptls_t ptls = states[i];
+        if (ptls == NULL) {
+            continue;
+        }
+        fprintf(stderr, "mmtk_jl_get_all_mutators: ptls=%p\n", ptls);
+        void* mutator = (void*)&(ptls->mmtk_mutator);
+        (*mutators)[n_mutators] = mutator;
+        (*threads)[n_mutators] = ptls;
+        n_mutators++;
+    }
+
+    *n = n_mutators;
+}
+
 Julia_Upcalls mmtk_upcalls = (Julia_Upcalls) {
     .scan_julia_exc_obj = scan_julia_exc_obj,
     .get_stackbase = get_stackbase,
@@ -640,4 +663,5 @@ Julia_Upcalls mmtk_upcalls = (Julia_Upcalls) {
     .mmtk_get_constrained_memory = mmtk_get_constrained_memory,
     .mmtk_get_heap_size_hint = mmtk_get_heap_size_hint,
     .mmtk_jl_task_stack_buffer = mmtk_jl_task_stack_buffer,
+    .mmtk_jl_get_all_mutators = mmtk_jl_get_all_mutators,
 };

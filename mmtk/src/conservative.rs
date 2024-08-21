@@ -18,10 +18,16 @@ lazy_static! {
 }
 pub static CONSERVATIVE_ROOTS_COUNT: AtomicUsize = AtomicUsize::new(0);
 
-pub fn check_task_scanned(task: Address) {
+pub fn check_task_stack_scanned(task: *const mmtk_jl_task_t) {
+    let addr = Address::from_ptr(task);
     let scanned = crate::conservative::CONSERVATIVE_SCANNED_TASK.lock().unwrap();
-    if scanned.get(&task).is_none() {
-        panic!("Task object {:?} is reached by scan_julia_object but its stack is not conseratively scanned", task);
+    if scanned.get(&addr).is_none() {
+        // We did not scan this
+        if unsafe { *task }.stkbuf != std::ptr::null_mut() {
+            panic!("Task object {:?} is reached by scan_julia_object and its stkbuf is non zero but its stack is not conseratively scanned", addr);
+        } else {
+            log::warn!("Task object {:?} is reached and it is not conservatly scanned. But its stkbuf is zero.", addr);
+        }
     }
 }
 

@@ -47,8 +47,37 @@ impl Collection<JuliaVM> for VMCollection {
 
         // Tell MMTk the stacks are ready.
         {
+            let mut c_mutators: Vec<*mut Mutator<JuliaVM>> = vec![];
+            let mut c_tls: Vec<VMMutatorThread> = vec![];
+
+            // Check if we really know every mutators
+            let mut mutators: *mut *mut Mutator<JuliaVM> = std::ptr::null_mut();
+            let mut threads: *mut *mut crate::julia_types::mmtk__jl_tls_states_t = std::ptr::null_mut();
+            let mut n_mutators: i32 = 0;
+            unsafe { ((*UPCALLS).mmtk_jl_get_all_mutators)(&mut mutators as *mut *mut *mut Mutator<JuliaVM>, &mut threads as *mut *mut *mut crate::julia_types::mmtk__jl_tls_states_t, &mut n_mutators as *mut i32) };
+
+            let mut i = 0;
+            while i < n_mutators {
+                let thread: *mut crate::julia_types::mmtk__jl_tls_states_t = unsafe { *(threads.add(i as usize)) };
+                let mutator: *mut Mutator<JuliaVM> = unsafe { *(mutators.add(i as usize)) };
+                let mutator_tls = unsafe { &*mutator }.mutator_tls;
+                info!("stop_all_mutators: visiting tls={:?}, mutator={:?} (from jl_all_tls_states)", mutator_tls, mutator);
+
+                assert_eq!(unsafe { std::mem::transmute::<_, *mut crate::julia_types::mmtk__jl_tls_states_t>(mutator_tls) }, thread);
+
+                c_mutators.push(mutator);
+                c_tls.push(mutator_tls);
+
+                i += 1;
+            }
+            assert_eq!(crate::active_plan::VMActivePlan::number_of_mutators(), i as usize);
+
             for mutator in crate::active_plan::VMActivePlan::mutators() {
-                info!("stop_all_mutators: visiting {:?}", mutator.mutator_tls);
+                info!("stop_all_mutators: visiting tls={:?}, mutator={:?} ", mutator.mutator_tls, mutator as *const _);
+
+                assert!(c_mutators.iter().find(|m| **m == mutator as *mut Mutator<JuliaVM>).is_some());
+                assert!(c_tls.iter().find(|t| **t == mutator.mutator_tls).is_some());
+
                 mutator_visitor(mutator);
             }
         }

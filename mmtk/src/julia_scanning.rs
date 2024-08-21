@@ -323,7 +323,7 @@ pub unsafe fn scan_julia_object<SV: SlotVisitor<JuliaVMSlot>>(obj: Address, clos
         let ta = obj.to_ptr::<mmtk_jl_task_t>();
 
         #[cfg(feature = "conservative")]
-        crate::conservative::check_task_scanned(obj);
+        crate::conservative::check_task_stack_scanned(ta);
 
         // transitively pinnig of stack roots happens during root
         // processing so it's fine to have only one closure here
