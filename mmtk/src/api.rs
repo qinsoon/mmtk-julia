@@ -496,7 +496,18 @@ pub extern "C" fn mmtk_get_obj_size(obj: ObjectReference) -> usize {
 #[no_mangle]
 pub extern "C" fn mmtk_pin_object(object: ObjectReference) -> bool {
     if mmtk_object_is_managed_by_mmtk(object.to_raw_address().as_usize()) {
-        memory_manager::pin_object::<JuliaVM>(object)
+        if memory_manager::is_mmtk_object(object.to_raw_address()).is_none() {
+            let maybe_objref = memory_manager::find_object_from_internal_pointer::<JuliaVM>(object.to_raw_address(), usize::MAX);
+            if let Some(objref) = maybe_objref {
+                warn!("Attempt to pin {:?}, but it is an internal reference of {:?}", object, objref);
+                memory_manager::pin_object::<JuliaVM>(objref)
+            } else {
+                error!("Attempt to pin {:?}, but it is not recognised as a object", object);
+                false
+            }
+        } else {
+            memory_manager::pin_object::<JuliaVM>(object)
+        }
     } else {
         debug!("Object is not managed by mmtk - (un)pinning it via this function isn't supported.");
         false

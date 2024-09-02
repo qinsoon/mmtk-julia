@@ -72,7 +72,8 @@ impl ObjectModel<JuliaVM> for VMObjectModel {
             copy_context.alloc_copy(from, bytes, 16, 8, semantics)
         } else if header_offset == 16 {
             // buffer should not be copied
-            unimplemented!();
+            log::error!("Attempt to copy {} which may be a buffer", from);
+            std::process::exit(1);
         } else {
             unimplemented!()
         };

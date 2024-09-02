@@ -279,10 +279,12 @@ pub unsafe fn scan_julia_object<SV: SlotVisitor<JuliaVMSlot>>(obj: Address, clos
             let value = ::std::ptr::addr_of!((*b).value);
             let globalref = ::std::ptr::addr_of!((*b).globalref);
             let ty = ::std::ptr::addr_of!((*b).ty);
+            // let owner = ::std::ptr::addr_of!((*b).owner);
 
             process_slot(closure, Address::from_usize(value as usize));
             process_slot(closure, Address::from_usize(globalref as usize));
             process_slot(closure, Address::from_usize(ty as usize));
+            // process_slot(closure, Address::from_usize(owner as usize));
             begin = begin.shift::<Address>(2);
         }
 
