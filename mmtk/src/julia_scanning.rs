@@ -487,7 +487,7 @@ pub fn process_slot<EV: SlotVisitor<JuliaVMSlot>>(closure: &mut EV, slot: Addres
 
         if let Some(objref) = simple_slot.load() {
             debug_assert!(
-                mmtk::memory_manager::is_in_mmtk_spaces::<JuliaVM>(objref),
+                mmtk::memory_manager::is_in_mmtk_spaces(objref),
                 "Object {:?} in slot {:?} is not mapped address",
                 objref,
                 simple_slot
@@ -559,7 +559,7 @@ pub fn process_offset_slot<EV: SlotVisitor<JuliaVMSlot>>(
 
         if let Some(objref) = offset_slot.load() {
             debug_assert!(
-                mmtk::memory_manager::is_in_mmtk_spaces::<JuliaVM>(objref),
+                mmtk::memory_manager::is_in_mmtk_spaces(objref),
                 "Object {:?} in slot {:?} is not mapped address",
                 objref,
                 offset_slot
