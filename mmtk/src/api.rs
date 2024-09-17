@@ -499,10 +499,10 @@ pub extern "C" fn mmtk_pin_object(object: ObjectReference) -> bool {
         if memory_manager::is_mmtk_object(object.to_raw_address()).is_none() {
             let maybe_objref = memory_manager::find_object_from_internal_pointer::<JuliaVM>(object.to_raw_address(), usize::MAX);
             if let Some(objref) = maybe_objref {
-                warn!("Attempt to pin {:?}, but it is an internal reference of {:?}", object, objref);
+                trace!("Attempt to pin {:?}, but it is an internal reference of {:?}", object, objref);
                 memory_manager::pin_object::<JuliaVM>(objref)
             } else {
-                error!("Attempt to pin {:?}, but it is not recognised as a object", object);
+                warn!("Attempt to pin {:?}, but it is not recognised as a object", object);
                 false
             }
         } else {
