@@ -204,6 +204,7 @@ impl Scanning<JuliaVM> for VMScanning {
         object: ObjectReference,
         slot_visitor: &mut SV,
     ) {
+        crate::api::SCANNED_OBJECTS.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
         process_object(object, slot_visitor);
     }
 

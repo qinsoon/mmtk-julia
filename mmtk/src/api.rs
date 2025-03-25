@@ -20,6 +20,9 @@ use mmtk::Mutator;
 use std::ffi::CStr;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
+pub static SCANNED_OBJECTS: AtomicUsize = AtomicUsize::new(0);
+pub static COPIED_OBJECTS: AtomicUsize = AtomicUsize::new(0);
+
 #[no_mangle]
 pub extern "C" fn mmtk_gc_init(
     min_heap_size: usize,
@@ -277,9 +280,9 @@ pub extern "C" fn mmtk_handle_user_collection_request(tls: VMMutatorThread, coll
         // auto
         0 => memory_manager::handle_user_collection_request::<JuliaVM>(&SINGLETON, tls),
         // full
-        1 => SINGLETON.handle_user_collection_request(tls, false, true),
+        1 => SINGLETON.handle_user_collection_request(tls, true, true),
         // incremental
-        2 => SINGLETON.handle_user_collection_request(tls, false, false),
+        2 => SINGLETON.handle_user_collection_request(tls, true, false),
         _ => unreachable!(),
     };
 }
@@ -671,4 +674,17 @@ pub extern "C" fn mmtk_is_pointer_pinned(addr: Address) -> bool {
         debug!("Object is not managed by mmtk - checking pinning state via this function isn't supported.");
         false
     }
+}
+
+#[no_mangle]
+pub extern "C" fn print_fragmentation() {
+    let map = memory_manager::live_bytes_in_last_gc(&SINGLETON);
+    for (space, stats) in map {
+        println!(
+            "Fragmentation in space {:?}: {} live bytes, {} total bytes, {:.2} %",
+            space, stats.live_bytes, stats.used_bytes, (stats.live_bytes as f64 / stats.used_bytes as f64) * 100.0
+        );
+    }
+
+    SINGLETON.get_plan().dump_memory_stats();
 }

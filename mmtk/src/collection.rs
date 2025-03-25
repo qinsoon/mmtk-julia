@@ -58,6 +58,10 @@ impl Collection<JuliaVM> for VMCollection {
         // unpin conservative roots
         crate::conservative::unpin_conservative_roots();
 
+        let copied = crate::api::COPIED_OBJECTS.swap(0, Ordering::SeqCst);
+        let total = crate::api::SCANNED_OBJECTS.swap(0, Ordering::SeqCst);;
+        println!("Copied {} objects of total {} objects = {}", copied, total, copied as f64 / total as f64);
+
         // Get the end time of the GC
         let end = unsafe { ((*UPCALLS).jl_hrtime)() };
         trace!("gc_end = {}", end);

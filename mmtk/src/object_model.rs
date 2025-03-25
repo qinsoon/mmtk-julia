@@ -62,6 +62,8 @@ impl ObjectModel<JuliaVM> for VMObjectModel {
         let from_start = Self::ref_to_object_start(from);
         let header_offset = from_addr - from_start;
 
+        crate::api::COPIED_OBJECTS.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+
         let dst = if header_offset == 8 {
             // regular object
             // Note: The `from` reference is not used by any allocator currently in MMTk core.
