@@ -125,6 +125,7 @@ pub struct Julia_Upcalls {
         size: *mut u64,
         ptid: *mut i32,
     ) -> Address,
+    pub mmtk_jl_symbol_name: extern "C" fn(tn: *mut crate::julia_types::mmtk_jl_typename_t) -> *mut i8,
 }
 
 pub static mut UPCALLS: *const Julia_Upcalls = null_mut();

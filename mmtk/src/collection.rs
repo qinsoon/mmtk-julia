@@ -74,6 +74,9 @@ impl Collection<JuliaVM> for VMCollection {
             )
         }
 
+        println!("GC ends");
+        dump_immix_block_stats();
+
         AtomicBool::store(&BLOCK_FOR_GC, false, Ordering::SeqCst);
         AtomicBool::store(&WORLD_HAS_STOPPED, false, Ordering::SeqCst);
 
@@ -178,4 +181,21 @@ pub extern "C" fn mmtk_block_thread_for_gc(gc_n_threads: u16) {
     while AtomicBool::load(&BLOCK_FOR_GC, Ordering::SeqCst) {
         count = cvar.wait(count).unwrap();
     }
+}
+
+pub fn dump_immix_block_stats() {
+    use mmtk::util::ObjectReference;
+    use mmtk::util::Address;
+    SINGLETON.enumerate_objects(|space_name: &str, block_start: Address, block_size: usize, object: ObjectReference| {
+        if space_name == "immix" {
+            println!(
+                "Block: {}, object: {} ({}), size: {}, pinned: {}",
+                block_start,
+                object,
+                unsafe { crate::julia_scanning::get_julia_object_type(object.to_raw_address()) },
+                unsafe { crate::object_model::get_so_object_size(object) },
+                mmtk::memory_manager::is_pinned(object),
+            );
+        }
+    });
 }

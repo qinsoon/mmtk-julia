@@ -792,6 +792,11 @@ JL_DLLEXPORT void *mmtk_jl_task_stack_buffer(void *task, size_t *size, int *ptid
     return (void*) active_start;
 }
 
+JL_DLLEXPORT char *mmtk_jl_symbol_name(jl_typename_t* tn)
+{
+    return jl_symbol_name(tn->name);
+}
+
 Julia_Upcalls mmtk_upcalls = (Julia_Upcalls) {
     .scan_julia_exc_obj = scan_julia_exc_obj,
     .get_stackbase = get_stackbase,
@@ -821,4 +826,5 @@ Julia_Upcalls mmtk_upcalls = (Julia_Upcalls) {
     .mmtk_get_constrained_memory = mmtk_get_constrained_memory,
     .mmtk_get_heap_size_hint = mmtk_get_heap_size_hint,
     .mmtk_jl_task_stack_buffer = mmtk_jl_task_stack_buffer,
+    .mmtk_jl_symbol_name = mmtk_jl_symbol_name,
 };

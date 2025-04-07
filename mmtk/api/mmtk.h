@@ -104,6 +104,7 @@ typedef struct {
     uint64_t (*mmtk_get_constrained_memory)(void);
     uint64_t (*mmtk_get_heap_size_hint)(void);
     void* (*mmtk_jl_task_stack_buffer)(void* task, size_t* size, int* ptid);
+    char* (*mmtk_jl_symbol_name)(void* tn);
 } Julia_Upcalls;
 
 /**

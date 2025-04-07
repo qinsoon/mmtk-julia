@@ -361,6 +361,46 @@ pub unsafe fn scan_julia_object<SV: SlotVisitor<JuliaVMSlot>>(obj: Address, clos
     }
 }
 
+#[inline(always)]
+pub unsafe fn get_julia_object_type(obj: Address) -> String {
+    // get Julia object type
+    let vt = mmtk_jl_typeof(obj);
+
+    // We don't scan buffers, as they will be scanned as a part of its parent object.
+    // But when a jl_binding_t buffer is inserted into remset, they have be to scanned.
+    // The gc bits (tag), which is set in the write barrier, tells us if the buffer is in the remset.
+    if vt as usize == JULIA_BUFF_TAG {
+        return "buff".to_string();
+    }
+
+    if vt == jl_symbol_type {
+        return "symbol".to_string();
+    }
+
+    if vt == jl_simplevector_type {
+        return "simplevector".to_string();
+    } else if (*vt).name == jl_array_typename {
+        return "array".to_string();
+    } else if vt == jl_module_type {
+       return "module".to_string();
+    } else if vt == jl_task_type {
+        return "task".to_string();
+    } else if vt == jl_string_type {
+        return "string".to_string();
+    } else {
+        if vt == jl_weakref_type {
+            return "weakref".to_string();
+        }
+        // Get detailed type name
+        let cstr = ((*UPCALLS).mmtk_jl_symbol_name)((*vt).name);
+        // jl_symbol_name(jl_sym_t*)
+        return std::ffi::CStr::from_ptr(cstr)
+            .to_string_lossy()
+            .into_owned();
+        // return "datatype".to_string();
+    }
+}
+
 pub unsafe fn mmtk_scan_gcpreserve_stack<'a, EV: SlotVisitor<JuliaVMSlot>>(
     ta: *const mmtk_jl_task_t,
     closure: &'a mut EV,
