@@ -196,6 +196,15 @@ pub fn dump_immix_block_stats() {
                 unsafe { crate::object_model::get_so_object_size(object) },
                 mmtk::memory_manager::is_pinned(object),
             );
+        } else if space_name == "nonmoving" {
+            println!(
+                "Nonmoving: {}, object: {} ({}), size: {}, reachable: {}",
+                block_start,
+                object,
+                unsafe { crate::julia_scanning::get_julia_object_type(object.to_raw_address()) },
+                unsafe { crate::object_model::get_so_object_size(object) },
+                object.is_reachable(),
+            );
         }
     });
 }

@@ -137,6 +137,11 @@ pub extern "C" fn mmtk_gc_init(
             AllocationSemantics::Immortal,
         );
         assert_eq!(immortal_allocator, AllocatorSelector::BumpPointer(0));
+        let nonmoving_allocator = memory_manager::get_allocator_mapping::<JuliaVM>(
+            &SINGLETON,
+            AllocationSemantics::NonMoving,
+        );
+        assert_eq!(nonmoving_allocator, AllocatorSelector::BumpPointer(1));
     }
 
     // Assert to make sure alignment used in C is correct

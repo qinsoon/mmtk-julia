@@ -45,7 +45,7 @@ memoffset = "*"
 
 [features]
 # We must build with default features
-default = ["mmtk/vm_space", "julia_copy_stack", "mmtk/is_mmtk_object", "mmtk/object_pinning", "mmtk/immix_stress_copying", "mmtk/dump_memory_stats"]
+default = ["mmtk/vm_space", "julia_copy_stack", "mmtk/is_mmtk_object", "mmtk/object_pinning", "mmtk/dump_memory_stats"]
 
 # Default features
 julia_copy_stack = []

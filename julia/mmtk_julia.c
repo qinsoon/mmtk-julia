@@ -76,6 +76,29 @@ JL_DLLEXPORT jl_value_t *jl_mmtk_gc_alloc_default(jl_ptls_t ptls, int osize, siz
     return v;
 }
 
+JL_DLLEXPORT jl_value_t *jl_mmtk_gc_alloc_nonmoving(jl_ptls_t ptls, int osize, size_t align, void *ty)
+{
+    // safepoint
+    jl_gc_safepoint_(ptls);
+
+    jl_value_t *v;
+    if ((uintptr_t)ty != jl_buff_tag) {
+        // v needs to be 16 byte aligned, therefore v_tagged needs to be offset accordingly to consider the size of header
+        jl_taggedvalue_t *v_tagged = (jl_taggedvalue_t *)mmtk_nonmoving_alloc_fast(&ptls->mmtk_mutator, LLT_ALIGN(osize, align), align, sizeof(jl_taggedvalue_t));
+        v = jl_valueof(v_tagged);
+        mmtk_nonmoving_post_alloc_fast(&ptls->mmtk_mutator, v, LLT_ALIGN(osize, align));
+    } else {
+        // allocating an extra word to store the size of buffer objects
+        printf("Allocating a buffer object as non moving!!!\n");
+        exit(1);
+    }
+    
+    ptls->gc_num.allocd += osize;
+    ptls->gc_num.poolalloc++;
+
+    return v;
+}
+
 JL_DLLEXPORT jl_value_t *jl_mmtk_gc_alloc_big(jl_ptls_t ptls, size_t sz)
 {
     // safepoint
@@ -792,9 +815,9 @@ JL_DLLEXPORT void *mmtk_jl_task_stack_buffer(void *task, size_t *size, int *ptid
     return (void*) active_start;
 }
 
-JL_DLLEXPORT char *mmtk_jl_symbol_name(jl_typename_t* tn)
+JL_DLLEXPORT char *mmtk_jl_symbol_name(void* tn)
 {
-    return jl_symbol_name(tn->name);
+    return jl_symbol_name(((jl_typename_t*)tn)->name);
 }
 
 Julia_Upcalls mmtk_upcalls = (Julia_Upcalls) {
